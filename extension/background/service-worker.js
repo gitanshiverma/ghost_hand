@@ -6,7 +6,22 @@
 
 import "../shared/messages.js";
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URLS = ["http://127.0.0.1:8000", "http://localhost:8000"];
+
+async function apiFetch(path, options = {}) {
+  let lastErr = null;
+  for (const base of BACKEND_URLS) {
+    try {
+      const res = await fetch(`${base}${path}`, options);
+      if (res.ok) return res;
+      throw new Error(`HTTP error ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("Backend unreachable");
+}
+
 
 const TARGET_FIELD_DEFINITIONS = [
   { id: "full-name", instruction: "Enter your full legal name as per university records", action_type: "input", alternatives: ["large_target"] },
@@ -147,7 +162,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const senderTabId = sender?.tab?.id || activeSessionState.tabId;
 
   if (message.type === "PLAN_REQUEST") {
-    fetch(`${BACKEND_URL}/plan`, {
+    apiFetch(`/plan`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -155,9 +170,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       body: JSON.stringify(message.payload)
     })
       .then(async response => {
-        if (!response.ok) {
-          throw new Error(`Backend returned status ${response.status}`);
-        }
         const data = await response.json();
         updateActiveSession({
           active: true,
@@ -189,7 +201,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "CONFIRM_ACTION") {
-    fetch(`${BACKEND_URL}/sessions/${message.sessionId}/confirm`, {
+    apiFetch(`/sessions/${message.sessionId}/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -213,7 +225,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       activeSessionState.currentStepIndex++;
     }
 
-    fetch(`${BACKEND_URL}/sessions/${message.sessionId}/step`, {
+    apiFetch(`/sessions/${message.sessionId}/step`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -230,7 +242,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "STOP_SESSION" || message.type === "STOP_GUIDANCE") {
     const sessId = message.sessionId || activeSessionState.sessionId;
     if (sessId) {
-      fetch(`${BACKEND_URL}/sessions/${sessId}/stop`, {
+      apiFetch(`/sessions/${sessId}/stop`, {
         method: "POST"
       }).catch(() => {});
     }

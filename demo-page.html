@@ -1,331 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NSUT Scholarship Application Portal</title>
-    <style>
-      :root {
-        --primary: #2563eb;
-        --primary-dark: #1d4ed8;
-        --bg: #f8fafc;
-        --card: #ffffff;
-        --text: #0f172a;
-        --text-muted: #64748b;
-        --border: #cbd5e1;
-      }
-
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      }
-
-      body {
-        background: var(--bg);
-        color: var(--text);
-        padding: 40px 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .container {
-        width: 100%;
-        max-width: 680px;
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 36px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-      }
-
-      header {
-        margin-bottom: 24px;
-        border-bottom: 1px solid var(--border);
-        padding-bottom: 20px;
-      }
-
-      .badge {
-        display: inline-block;
-        background: #eff6ff;
-        color: var(--primary);
-        font-size: 12px;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 9999px;
-        margin-bottom: 8px;
-        border: 1px solid #bfdbfe;
-      }
-
-      h1 {
-        font-size: 24px;
-        color: #1e3a8a;
-        margin-bottom: 8px;
-      }
-
-      p {
-        color: var(--text-muted);
-        font-size: 14px;
-        line-height: 1.5;
-      }
-
-      .info-box {
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
-        border-radius: 10px;
-        padding: 14px 18px;
-        margin-bottom: 24px;
-        font-size: 13px;
-        color: #166534;
-      }
-
-      .form-section-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-top: 20px;
-        margin-bottom: 14px;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #e2e8f0;
-      }
-
-      .form-group {
-        margin-bottom: 18px;
-      }
-
-      label {
-        display: block;
-        font-weight: 600;
-        font-size: 14px;
-        color: #334155;
-        margin-bottom: 6px;
-      }
-
-      .field-id-tag {
-        font-family: monospace;
-        font-size: 11px;
-        color: #64748b;
-        background: #f1f5f9;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-left: 6px;
-      }
-
-      .required {
-        color: #dc2626;
-      }
-
-      input[type="text"],
-      input[type="email"],
-      select,
-      textarea,
-      input[type="file"] {
-        width: 100%;
-        padding: 11px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 14px;
-        color: var(--text);
-        background: #ffffff;
-        outline: none;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      }
-
-      input:focus,
-      select:focus,
-      textarea:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-      }
-
-      .checkbox-container {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        background: #f8fafc;
-        border: 1px solid var(--border);
-        padding: 14px;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-
-      .checkbox-container input {
-        margin-top: 3px;
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-      }
-
-      .btn-row {
-        display: flex;
-        gap: 12px;
-        margin-top: 24px;
-      }
-
-      .btn-submit {
-        flex: 2;
-        background: var(--primary);
-        color: #ffffff;
-        border: none;
-        border-radius: 10px;
-        padding: 14px;
-        font-size: 15px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: background 0.15s ease;
-      }
-
-      .btn-submit:hover {
-        background: var(--primary-dark);
-      }
-
-      .btn-reset {
-        flex: 1;
-        background: #f1f5f9;
-        color: #475569;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 14px;
-        font-size: 15px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: background 0.15s ease;
-      }
-
-      .btn-reset:hover {
-        background: #e2e8f0;
-        color: #0f172a;
-      }
-
-      .success-box {
-        display: none;
-        margin-top: 24px;
-        background: #ecfdf5;
-        border: 1px solid #6ee7b7;
-        color: #065f46;
-        padding: 18px;
-        border-radius: 10px;
-        text-align: center;
-        font-weight: 700;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <span class="badge">Netaji Subhas University of Technology</span>
-        <h1>🎓 Scholarship Application Portal</h1>
-        <p>This form matches Person A's target DOM mapping specification with exact field IDs.</p>
-      </header>
-
-      <div class="info-box">
-        💡 <strong>Person A Target Verification:</strong> Click the <strong>Ghost Hands 🖐️</strong> extension icon or Side Panel and press <strong>"Start Guided Steps"</strong> to see all 13 targeted fields guided in sequence!
-      </div>
-
-      <form id="scholarship-form" onsubmit="event.preventDefault(); document.getElementById('success-msg').style.display = 'block'; window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });">
-        
-        <div class="form-section-title">1. Student Identification</div>
-
-        <div class="form-group">
-          <label for="full-name">Full Name <span class="required">*</span><span class="field-id-tag">#full-name</span></label>
-          <input type="text" id="full-name" name="full-name" placeholder="Enter full name" required />
-        </div>
-
-        <div class="form-group">
-          <label for="university-email">University Email <span class="required">*</span><span class="field-id-tag">#university-email</span></label>
-          <input type="email" id="university-email" name="university-email" placeholder="student@nsut.ac.in" required />
-        </div>
-
-        <div class="form-group">
-          <label for="student-id">Student ID / Roll No. <span class="required">*</span><span class="field-id-tag">#student-id</span></label>
-          <input type="text" id="student-id" name="student-id" placeholder="e.g. 2024UCSE001" required />
-        </div>
-
-        <div class="form-section-title">2. Academic Background</div>
-
-        <div class="form-group">
-          <label for="current-year">Current Academic Year <span class="required">*</span><span class="field-id-tag">#current-year</span></label>
-          <select id="current-year" name="current-year" required>
-            <option value="">-- Select Year --</option>
-            <option value="1">1st Year (Fresher)</option>
-            <option value="2">2nd Year (Sophomore)</option>
-            <option value="3">3rd Year (Junior)</option>
-            <option value="4">4th Year (Senior)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="degree-programme">Degree Programme <span class="required">*</span><span class="field-id-tag">#degree-programme</span></label>
-          <select id="degree-programme" name="degree-programme" required>
-            <option value="">-- Select Programme --</option>
-            <option value="btech-cse">B.Tech - Computer Science & Engineering</option>
-            <option value="btech-it">B.Tech - Information Technology</option>
-            <option value="btech-ece">B.Tech - Electronics & Communication</option>
-            <option value="btech-me">B.Tech - Mechanical Engineering</option>
-            <option value="mtech">M.Tech / Post-Graduate</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="scholarship-category">Scholarship Category <span class="required">*</span><span class="field-id-tag">#scholarship-category</span></label>
-          <select id="scholarship-category" name="scholarship-category" required>
-            <option value="">-- Select Category --</option>
-            <option value="merit">Merit-cum-Means Scholarship</option>
-            <option value="economically-weaker">Economically Weaker Section (EWS)</option>
-            <option value="girl-child">Single Girl Child Special Grant</option>
-            <option value="sports">Distinguished Sports Excellence Award</option>
-          </select>
-        </div>
-
-        <div class="form-section-title">3. Statements & Uploads</div>
-
-        <div class="form-group">
-          <label for="academic-achievements">Academic Achievements & CGPA <span class="field-id-tag">#academic-achievements</span></label>
-          <textarea id="academic-achievements" name="academic-achievements" rows="3" placeholder="List CGPA, ranks, competitions won, research papers..."></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="personal-statement">Personal Statement / Financial Need <span class="field-id-tag">#personal-statement</span></label>
-          <textarea id="personal-statement" name="personal-statement" rows="3" placeholder="Explain your reasons for applying and financial background..."></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="academic-transcript">Academic Transcript (PDF) <span class="required">*</span><span class="field-id-tag">#academic-transcript</span></label>
-          <input type="file" id="academic-transcript" name="academic-transcript" accept=".pdf" required />
-        </div>
-
-        <div class="form-group">
-          <label for="supporting-document">Supporting Document (Income/Category Certificate) <span class="field-id-tag">#supporting-document</span></label>
-          <input type="file" id="supporting-document" name="supporting-document" accept=".pdf,.jpg,.png" />
-        </div>
-
-        <div class="form-section-title">4. Confirmation & Submission</div>
-
-        <div class="form-group">
-          <label class="checkbox-container">
-            <input type="checkbox" id="declaration" name="declaration" required />
-            <span>
-              <strong>I hereby declare</strong> that the information given above is true and authentic to the best of my knowledge.
-              <span class="field-id-tag">#declaration</span>
-            </span>
-          </label>
-        </div>
-
-        <div class="btn-row">
-          <button type="submit" id="submit-button" class="btn-submit">
-            Submit Application <span class="field-id-tag" style="color: white; background: rgba(255,255,255,0.2);">#submit-button</span>
-          </button>
-          <button type="reset" id="reset-button" class="btn-reset">
-            Reset <span class="field-id-tag">#reset-button</span>
-          </button>
-        </div>
-      </form>
-
-      <div id="success-msg" class="success-box">
-        🎉 Scholarship Application successfully submitted!
-      </div>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merit Scholarship Application 2026–27 | Northbridge University</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <span class="brand-name">Northbridge University</span>
+      <span class="brand-sub">Student Financial Aid Portal</span>
     </div>
-  </body>
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="#">Students</a></li>
+        <li><a href="#">Financial Aid</a></li>
+        <li><a href="#">Help</a></li>
+        <li><a href="#">My Application</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="#">Home</a> &gt; <a href="#">Financial Aid</a> &gt; <span>Scholarship Application</span>
+  </nav>
+
+  <h1>Merit Scholarship Application 2026–27</h1>
+
+  <div class="notice" role="note">
+    <strong>Eligibility.</strong> You must be a currently enrolled full-time student with a cumulative GPA of 3.5 or above. Applications close on 28 February 2027. Incomplete applications will not be reviewed.
+  </div>
+
+  <form id="scholarship-form" novalidate>
+    <fieldset>
+      <legend>Section 1: Student Information</legend>
+
+      <div class="field">
+        <label for="full-name">Full legal name <span class="req">(required)</span></label>
+        <input type="text" id="full-name" name="fullName" autocomplete="off" required>
+        <p class="error" id="full-name-error" aria-live="polite"></p>
+      </div>
+
+      <div class="field">
+        <label for="university-email">University email <span class="req">(required)</span></label>
+        <input type="email" id="university-email" name="universityEmail" autocomplete="off" placeholder="name@northbridge.edu" required>
+        <p class="error" id="university-email-error" aria-live="polite"></p>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="student-id">Student ID <span class="req">(required)</span></label>
+          <input type="text" id="student-id" name="studentId" autocomplete="off" placeholder="e.g. NB2024001" required>
+          <p class="error" id="student-id-error" aria-live="polite"></p>
+        </div>
+        <div class="field">
+          <label for="current-year">Current year of study <span class="req">(required)</span></label>
+          <select id="current-year" name="currentYear" required>
+            <option value="">Select year</option>
+            <option>First year</option>
+            <option>Second year</option>
+            <option>Third year</option>
+            <option>Fourth year</option>
+            <option>Postgraduate</option>
+          </select>
+          <p class="error" id="current-year-error" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="degree-programme">Degree programme <span class="req">(required)</span></label>
+        <input type="text" id="degree-programme" name="degreeProgramme" autocomplete="off" placeholder="e.g. BSc Computer Science" required>
+        <p class="error" id="degree-programme-error" aria-live="polite"></p>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Section 2: Scholarship Details</legend>
+
+      <div class="field">
+        <label for="scholarship-category">Scholarship category <span class="req">(required)</span></label>
+        <select id="scholarship-category" name="scholarshipCategory" required>
+          <option value="">Select a category</option>
+          <option>Academic Excellence</option>
+          <option>Leadership and Service</option>
+          <option>STEM Achievement</option>
+          <option>Arts and Humanities</option>
+          <option>First-Generation Student</option>
+        </select>
+        <p class="error" id="scholarship-category-error" aria-live="polite"></p>
+      </div>
+
+      <div class="field">
+        <label for="academic-achievements">Academic achievements <span class="req">(required)</span></label>
+        <textarea id="academic-achievements" name="academicAchievements" rows="4" required></textarea>
+        <p class="hint">List honours, awards, publications or relevant projects.</p>
+        <p class="error" id="academic-achievements-error" aria-live="polite"></p>
+      </div>
+
+      <div class="field">
+        <label for="personal-statement">Personal statement <span class="req">(required)</span></label>
+        <textarea id="personal-statement" name="personalStatement" rows="6" required></textarea>
+        <p class="hint">Minimum 50 characters.</p>
+        <p class="error" id="personal-statement-error" aria-live="polite"></p>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Section 3: Supporting Documents</legend>
+
+      <div class="field">
+        <label for="academic-transcript">Academic transcript <span class="req">(required)</span></label>
+        <input type="file" id="academic-transcript" name="academicTranscript" accept=".pdf,.doc,.docx,.jpg,.png">
+        <p class="hint">PDF, Word or image. Maximum 5 MB.</p>
+        <p class="error" id="academic-transcript-error" aria-live="polite"></p>
+      </div>
+
+      <div class="field">
+        <label for="supporting-document">Supporting document (optional)</label>
+        <input type="file" id="supporting-document" name="supportingDocument" accept=".pdf,.doc,.docx,.jpg,.png">
+        <p class="hint">For example, a recommendation letter or award certificate.</p>
+        <p class="error" id="supporting-document-error" aria-live="polite"></p>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Section 4: Declaration</legend>
+      <div class="field check">
+        <input type="checkbox" id="declaration" name="declaration" required>
+        <label for="declaration">I confirm that the information provided in this application is accurate and complete.</label>
+      </div>
+      <p class="error" id="declaration-error" aria-live="polite"></p>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit" id="submit-button" class="btn primary">Submit Application</button>
+      <button type="button" id="reset-button" class="btn">Reset Form</button>
+    </div>
+  </form>
+
+  <div id="confirmation" class="confirmation" role="status" tabindex="-1" hidden>
+    <h2>Application received</h2>
+    <p>Your Merit Scholarship application has been recorded. Reference number: <strong id="reference-number"></strong>.</p>
+    <p>A confirmation will be sent to your university email address.</p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Northbridge University, Office of Student Financial Aid. Fictional institution for demonstration purposes.</p>
+    <p><a href="#">Privacy</a> &nbsp; <a href="#">Accessibility</a> &nbsp; <a href="#">Contact</a></p>
+  </div>
+</footer>
+<script src="script.js"></script>
+</body>
 </html>
