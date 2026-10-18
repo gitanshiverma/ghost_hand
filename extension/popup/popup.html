@@ -27,7 +27,7 @@
       }
 
       body {
-        width: 320px;
+        width: 340px;
         background: var(--bg);
         color: var(--text);
         padding: 16px;
@@ -47,7 +47,7 @@
       }
 
       .brand-icon {
-        font-size: 24px;
+        font-size: 26px;
         line-height: 1;
       }
 
@@ -66,7 +66,7 @@
       .status-pill {
         font-size: 11px;
         font-weight: 700;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 9999px;
         background: #e2e8f0;
         color: var(--text-muted);
@@ -83,7 +83,7 @@
         border-radius: var(--radius);
         padding: 12px;
         margin-bottom: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       }
 
       label {
@@ -94,9 +94,110 @@
         margin-bottom: 6px;
       }
 
+      /* Autonomy Mode Selector */
+      .mode-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+
+      .mic-btn-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+
+      .mic-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .mic-btn:hover {
+        background: #dbeafe;
+        border-color: #93c5fd;
+      }
+
+      .mic-btn.recording {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #dc2626;
+        animation: gh-mic-pulse 1.2s infinite;
+      }
+
+      @keyframes gh-mic-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+        70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+      }
+
+      .mic-status-bar {
+        font-size: 11px;
+        font-weight: 600;
+        color: #dc2626;
+        margin-bottom: 6px;
+        display: none;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #dc2626;
+        display: inline-block;
+      }
+
+      .mode-btn {
+        background: #f1f5f9;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 4px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.15s ease;
+      }
+
+      .mode-btn:hover {
+        background: #e2e8f0;
+        color: var(--text);
+      }
+
+      .mode-btn.active {
+        background: #eff6ff;
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+      }
+
+      .mode-desc {
+        font-size: 11px;
+        color: var(--text-muted);
+        line-height: 1.35;
+        background: #f8fafc;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border-left: 2.5px solid var(--primary);
+      }
+
       textarea {
         width: 100%;
-        height: 70px;
+        height: 64px;
         padding: 10px;
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -192,7 +293,13 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 0;
+        padding: 5px 0;
+      }
+
+      .toggle-row + .toggle-row {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid #f1f5f9;
       }
 
       .toggle-info {
@@ -279,6 +386,14 @@
       .banner-text {
         color: #1e3a8a;
       }
+
+      .privacy-note {
+        font-size: 10px;
+        color: #94a3b8;
+        text-align: center;
+        margin-top: 8px;
+        line-height: 1.3;
+      }
     </style>
   </head>
   <body>
@@ -287,7 +402,7 @@
         <span class="brand-icon">🖐️</span>
         <div>
           <div class="brand-title">Ghost Hands</div>
-          <div class="brand-subtitle">Accessible Web Guidance</div>
+          <div class="brand-subtitle">Universal Web Guidance</div>
         </div>
       </div>
       <div id="status-pill" class="status-pill">Ready</div>
@@ -302,14 +417,36 @@
       <div id="banner-instruction" class="banner-text">Loading current step...</div>
     </div>
 
+    <!-- Mode Selector -->
     <div class="section">
-      <label for="intent">What do you want to accomplish?</label>
-      <textarea id="intent" placeholder="e.g. Fill out this registration form, purchase items, etc."></textarea>
+      <label>Guidance Mode</label>
+      <div class="mode-group">
+        <button class="mode-btn active" data-mode="guide">🧭 Guide me</button>
+        <button class="mode-btn" data-mode="automate">⚡ Do it for me</button>
+      </div>
+      <div id="mode-description" class="mode-desc">
+        Guided steps + intelligent Cursor Assistant that explains whatever you point at.
+      </div>
+    </div>
+
+    <!-- Intent Input with Voice Recognition -->
+    <div class="section">
+      <div class="mic-btn-wrap">
+        <label for="intent" style="margin-bottom: 0;">What do you want to do?</label>
+        <button id="mic-btn" class="mic-btn" type="button" title="Speak your request (Voice Recognition)">
+          <span>🎤</span> <span id="mic-label">Speak</span>
+        </button>
+      </div>
+      <div id="mic-status" class="mic-status-bar">
+        <span class="pulse-dot"></span> <span id="mic-status-text">Listening... Speak now</span>
+      </div>
+      <textarea id="intent" placeholder="Speak (🎤) or type: e.g. Fill scholarship form with my details..."></textarea>
       
       <div class="quick-chips">
-        <span class="chip" data-intent="Complete this form step by step">📝 Fill form</span>
-        <span class="chip" data-intent="Guide me through registration">👤 Sign up</span>
-        <span class="chip" data-intent="Guide me to submit this page">🚀 Submit</span>
+        <span class="chip" data-intent="Complete this scholarship form step by step">📝 Fill scholarship</span>
+        <span class="chip" data-intent="Search this website">🔍 Search</span>
+        <span class="chip" data-intent="Guide me to sign in or register">👤 Sign in</span>
+        <span class="chip" data-intent="Explore and explain this page">🧭 Explore page</span>
       </div>
     </div>
 
@@ -321,7 +458,18 @@
       <span>◨ Open Side Panel</span>
     </button>
 
+    <!-- Accessibility & Voice Preferences -->
     <div class="section">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">🔊 Fish Audio Voice</span>
+          <span class="toggle-subtitle">Spoken instructions via AI TTS</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="voice-toggle" checked />
+          <span class="slider"></span>
+        </label>
+      </div>
       <div class="toggle-row">
         <div class="toggle-info">
           <span class="toggle-title">🎯 Large Target Mode</span>
@@ -337,6 +485,10 @@
     <button id="stop" class="btn btn-danger">
       <span>🛑 Emergency Stop</span>
     </button>
+
+    <div class="privacy-note">
+      🔒 Sensitive fields (passwords, cards) stay in blind mode. Forms are never submitted without your confirmation.
+    </div>
 
     <script src="popup.js"></script>
   </body>

@@ -99,6 +99,89 @@
         justify-content: space-between;
       }
 
+      /* Autonomy Mode Selector */
+      .mode-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+
+      .sp-mic-btn-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .sp-mic-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .sp-mic-btn:hover {
+        background: #dbeafe;
+        border-color: #93c5fd;
+      }
+
+      .sp-mic-btn.recording {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #dc2626;
+        animation: gh-mic-pulse 1.2s infinite;
+      }
+
+      @keyframes gh-mic-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+        70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+      }
+
+      .sp-mic-status {
+        font-size: 11px;
+        font-weight: 600;
+        color: #dc2626;
+        margin-bottom: 6px;
+        display: none;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .mode-btn {
+        background: #f1f5f9;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 4px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.15s ease;
+      }
+
+      .mode-btn:hover {
+        background: #e2e8f0;
+        color: var(--text);
+      }
+
+      .mode-btn.active {
+        background: #eff6ff;
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+      }
+
       textarea {
         width: 100%;
         height: 64px;
@@ -114,6 +197,30 @@
       textarea:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+      }
+
+      .quick-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+        margin-bottom: 10px;
+      }
+
+      .chip {
+        font-size: 11px;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        padding: 4px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .chip:hover {
+        background: #e2e8f0;
+        color: var(--text);
       }
 
       .sp-btn {
@@ -161,14 +268,13 @@
         color: #ffffff;
       }
 
-      /* Progress Bar */
+      /* Step Progress Bar */
       .progress-container {
-        margin-top: 8px;
         margin-bottom: 12px;
       }
 
       .progress-bar {
-        height: 8px;
+        height: 6px;
         background: #e2e8f0;
         border-radius: 9999px;
         overflow: hidden;
@@ -178,15 +284,16 @@
         height: 100%;
         width: 0%;
         background: var(--primary);
+        border-radius: 9999px;
         transition: width 0.3s ease;
       }
 
-      /* Stepper List */
+      /* Step List */
       .step-list {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        margin-top: 8px;
+        margin-bottom: 14px;
         max-height: 280px;
         overflow-y: auto;
       }
@@ -199,57 +306,56 @@
         border-radius: 8px;
         border: 1px solid var(--border);
         background: #f8fafc;
-        transition: all 0.15s ease;
-        cursor: pointer;
-      }
-
-      .step-item:hover {
-        border-color: #cbd5e1;
+        transition: all 0.2s ease;
       }
 
       .step-item.active {
-        background: var(--primary-light);
+        background: #ffffff;
         border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
       }
 
       .step-item.completed {
-        background: var(--success-light);
-        border-color: #86efac;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        opacity: 0.8;
       }
 
       .step-icon {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
+        font-size: 16px;
+        width: 22px;
+        height: 22px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
-        font-weight: 700;
+        flex-shrink: 0;
+        border-radius: 50%;
         background: #e2e8f0;
         color: var(--text-muted);
-        flex-shrink: 0;
+        font-weight: 700;
+        font-size: 11px;
       }
 
       .step-item.active .step-icon {
         background: var(--primary);
-        color: white;
+        color: #ffffff;
       }
 
       .step-item.completed .step-icon {
         background: var(--success);
-        color: white;
+        color: #ffffff;
       }
 
       .step-content {
         flex: 1;
+        min-width: 0;
       }
 
       .step-title {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--text);
-        line-height: 1.3;
+        line-height: 1.35;
       }
 
       .step-target {
@@ -289,6 +395,13 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        padding: 5px 0;
+      }
+
+      .toggle-row + .toggle-row {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid #f1f5f9;
       }
 
       .toggle-info {
@@ -397,11 +510,40 @@
       <div id="sp-status" class="sp-status-badge">Ready</div>
     </div>
 
-    <!-- Start / Intent Section -->
+    <!-- Mode Selector -->
+    <div class="sp-card">
+      <div class="sp-card-title">Guidance Mode</div>
+      <div class="mode-group">
+        <button class="mode-btn active" data-mode="guide">🧭 Guide me</button>
+        <button class="mode-btn" data-mode="automate">⚡ Do it for me</button>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); line-height: 1.35; padding: 4px 6px; background: #f8fafc; border-radius: 6px; border-left: 2.5px solid var(--primary);" id="sp-mode-desc">
+        Guided steps + intelligent Cursor Assistant that explains whatever you point at.
+      </div>
+    </div>
+
+    <!-- Start / Intent Section with Voice Recognition -->
     <div class="sp-card" id="sp-intent-card">
-      <div class="sp-card-title">What is your goal?</div>
-      <textarea id="sp-intent-input" placeholder="e.g. Register for courses, submit application, fill form..."></textarea>
-      <button id="sp-start-btn" class="sp-btn sp-btn-primary" style="margin-top: 8px;">
+      <div class="sp-mic-btn-wrap">
+        <div class="sp-card-title" style="margin-bottom: 0;">What is your goal on this page?</div>
+        <button id="sp-mic-btn" class="sp-mic-btn" type="button" title="Speak your goal (Voice Input)">
+          <span>🎤</span> <span id="sp-mic-label">Speak</span>
+        </button>
+      </div>
+      <div id="sp-mic-status" class="sp-mic-status">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626; display: inline-block;"></span>
+        <span id="sp-mic-status-text">Listening... Speak now</span>
+      </div>
+      <textarea id="sp-intent-input" placeholder="Speak (🎤) or type: e.g. Fill scholarship form with my details..."></textarea>
+      
+      <div class="quick-chips">
+        <span class="chip" data-intent="Complete this scholarship form step by step">📝 Fill scholarship</span>
+        <span class="chip" data-intent="Search this website">🔍 Search</span>
+        <span class="chip" data-intent="Guide me to sign in or register">👤 Sign in</span>
+        <span class="chip" data-intent="Explore and explain this page">🧭 Explore</span>
+      </div>
+
+      <button id="sp-start-btn" class="sp-btn sp-btn-primary">
         <span>🖐️ Start Guided Steps</span>
       </button>
     </div>
@@ -433,13 +575,23 @@
       </button>
     </div>
 
-    <!-- Accessibility Signals (axe-core Integration) -->
+    <!-- Accessibility & Voice Preferences -->
     <div class="sp-card">
       <div class="a11y-score-row">
         <span style="font-size: 13px; font-weight: 700;">♿ Page Accessibility (axe-core)</span>
         <span id="sp-a11y-score" class="a11y-pill">Evaluating...</span>
       </div>
-      <div class="toggle-row" style="margin-top: 8px;">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">🔊 Fish Audio Voice</span>
+          <span class="toggle-subtitle">AI Text-to-Speech instructions</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="sp-voice-toggle" checked />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
         <div class="toggle-info">
           <span class="toggle-title">🎯 Large Target Mode</span>
           <span class="toggle-subtitle">Oversized targets for motor assistance</span>
@@ -451,7 +603,7 @@
       </div>
     </div>
 
-    <!-- Browser-Use & Stagehand Sanitized Page Map Inspector -->
+    <!-- DOM Element Inspector -->
     <div class="sp-card">
       <div class="sp-card-title">
         <span>Sanitized Page Map</span>
@@ -459,7 +611,7 @@
           Inspect DOM
         </button>
       </div>
-      <div id="sp-inspector" class="inspector-content">Click "Inspect DOM" to view sanitized snapshot extracted by Person A.</div>
+      <div id="sp-inspector" class="inspector-content">Click "Inspect DOM" to view sanitized snapshot extracted from the page.</div>
     </div>
 
     <script src="sidepanel.js"></script>

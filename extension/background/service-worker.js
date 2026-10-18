@@ -1,7 +1,7 @@
 /**
  * Ghost Hands - Background Service Worker
- * Central message hub for backend API communication, session management,
- * and side panel synchronization.
+ * Central orchestrator for API planning, Fish Audio voice proxying,
+ * offline fallback generation, and cross-tab/sidepanel synchronization.
  */
 
 import "../shared/messages.js";
@@ -12,41 +12,33 @@ async function apiFetch(path, options = {}) {
   let lastErr = null;
   for (const base of BACKEND_URLS) {
     try {
-      const res = await fetch(`${base}${path}`, options);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const res = await fetch(`${base}${path}`, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
       if (res.ok) return res;
       throw new Error(`HTTP error ${res.status}`);
     } catch (e) {
       lastErr = e;
+      // If server is not running on 127.0.0.1, localhost will also fail, don't stall
+      if (e.name === "TypeError" || (e.message && e.message.includes("Failed to fetch"))) {
+        break;
+      }
     }
   }
   throw lastErr || new Error("Backend unreachable");
 }
 
-
-const TARGET_FIELD_DEFINITIONS = [
-  { id: "full-name", instruction: "Enter your full legal name as per university records", action_type: "input", alternatives: ["large_target"] },
-  { id: "university-email", instruction: "Enter your official university email (@nsut.ac.in)", action_type: "input", alternatives: ["large_target"] },
-  { id: "student-id", instruction: "Enter your student ID or roll number", action_type: "input", alternatives: ["large_target"] },
-  { id: "current-year", instruction: "Select your current academic year", action_type: "select", alternatives: ["large_target"] },
-  { id: "degree-programme", instruction: "Select your registered degree programme", action_type: "select", alternatives: ["large_target"] },
-  { id: "scholarship-category", instruction: "Choose your eligible scholarship category", action_type: "select", alternatives: ["large_target"] },
-  { id: "academic-achievements", instruction: "Provide details of your academic achievements, GPA, and awards", action_type: "input", alternatives: [] },
-  { id: "personal-statement", instruction: "Write your personal statement explaining financial need or goals", action_type: "input", alternatives: [] },
-  { id: "academic-transcript", instruction: "Upload your official academic transcript (PDF)", action_type: "file", alternatives: ["large_target"] },
-  { id: "supporting-document", instruction: "Upload supporting income/category certificate", action_type: "file", alternatives: ["large_target"] },
-  { id: "declaration", instruction: "Review the declaration and check the box to confirm", action_type: "click", alternatives: ["large_target"], needs_large_target: true },
-  { id: "submit-button", instruction: "Click Submit Application to complete your submission", action_type: "click", requires_confirmation: true, alternatives: ["large_target"] },
-  { id: "reset-button", instruction: "Reset form if needed", action_type: "click", requires_confirmation: true, alternatives: ["large_target"] }
-];
-
 let activeSessionState = {
   active: false,
   sessionId: null,
   intent: "",
+  mode: "guide", // "guide" or "automate"
   currentStepIndex: 0,
   totalSteps: 0,
   plan: [],
   isLargeTargetMode: false,
+  isVoiceEnabled: true,
   tabId: null
 };
 
@@ -54,119 +46,251 @@ if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {});
 }
 
-// Generate offline fallback plan when backend is unreachable
-function generateFallbackPlan(payload) {
+// Universal offline fallback planner that handles any webpage with auto-fill values
+function generateUniversalFallbackPlan(payload) {
   const elements = payload.page_snapshot || [];
-  const intent = payload.intent || "Guided application workflow";
+  const intent = (payload.intent || "Navigate this webpage").trim();
+  const intentLower = intent.toLowerCase();
+  const accessibilityMode = payload.accessibility_mode || "visual";
+  const mode = payload.mode || "guide";
 
   if (!elements || elements.length === 0) {
     return {
       session_id: `fallback_${Date.now()}`,
       status: "ready",
+      planner_source: "offline_fallback",
+      mode,
       steps: [
         {
           step_id: 1,
           target_ref: "el_0",
+          field_id: "el_0",
           instruction: `Exploring page for: "${intent}". No interactive elements found.`,
           action_type: "notice",
+          suggested_value: null,
           requires_confirmation: false,
+          is_sensitive: false,
+          needs_large_target: accessibilityMode === "large_target",
           alternatives: ["large_target"]
         }
       ]
     };
   }
 
-  // Check if known scholarship fields are present in the page snapshot
-  const presentKnownFields = TARGET_FIELD_DEFINITIONS.filter(def => {
-    return elements.some(el => el.id === def.id || el.ref === def.id || el.field_id === def.id);
-  });
-
-  if (presentKnownFields.length > 0) {
-    let stepCounter = 1;
-    const steps = presentKnownFields
-      .filter(def => def.id !== "reset-button") // Omit reset button from standard forward flow
-      .map(def => {
-        const matchingEl = elements.find(el => el.id === def.id || el.ref === def.id || el.field_id === def.id);
-        return {
-          step_id: stepCounter++,
-          target_ref: def.id,
-          field_id: def.id,
-          instruction: def.instruction,
-          action_type: def.action_type,
-          requires_confirmation: Boolean(def.requires_confirmation),
-          needs_large_target: Boolean(def.needs_large_target || matchingEl?.needs_large_target),
-          is_sensitive: Boolean(matchingEl?.is_sensitive),
-          visible_label: matchingEl?.visible_label || matchingEl?.accessible_name || def.id,
-          alternatives: def.alternatives || ["large_target"]
-        };
-      });
-
-    return {
-      session_id: `scholarship_${Date.now()}`,
-      status: "ready",
-      is_offline_fallback: true,
-      steps
-    };
-  }
-
-  // Generic fallback if page does not match scholarship form
-  const inputs = elements.filter(el => ["input", "textarea", "select"].includes(el.tag));
-  const buttons = elements.filter(el => el.tag === "button" || el.role === "button" || el.input_type === "submit");
-
   const plannedSteps = [];
   let stepCounter = 1;
 
-  inputs.slice(0, 4).forEach(el => {
-    const label = el.visible_label || el.accessible_name || el.placeholder || el.id || "this field";
-    plannedSteps.push({
-      step_id: stepCounter++,
-      target_ref: el.id || el.ref,
-      field_id: el.id || el.ref,
-      instruction: el.is_sensitive
-        ? `Please enter your secure ${label} (data is kept private)`
-        : `Fill in ${label}`,
-      action_type: el.tag === "select" ? "select" : "input",
-      requires_confirmation: false,
-      is_sensitive: el.is_sensitive,
-      needs_large_target: el.needs_large_target,
-      visible_label: label,
-      alternatives: ["large_target"]
+  // Search intent
+  const isSearch = ["search", "find", "query", "look up", "google"].some(k => intentLower.includes(k));
+  const isLogin = ["login", "log in", "sign in", "signin", "auth"].some(k => intentLower.includes(k));
+  const isSignup = ["sign up", "signup", "register", "join", "create account"].some(k => intentLower.includes(k));
+
+  const inputs = elements.filter(el => ["input", "textarea", "select"].includes(el.tag) || ["textbox", "searchbox", "combobox"].includes(el.role));
+  const buttons = elements.filter(el => el.tag === "button" || el.role === "button" || el.input_type === "submit");
+  const links = elements.filter(el => el.tag === "a" || el.role === "link");
+
+  if (isSearch) {
+    const searchInputs = inputs.filter(el =>
+      el.input_type === "search" ||
+      (el.accessible_name && el.accessible_name.toLowerCase().includes("search")) ||
+      (el.placeholder && el.placeholder.toLowerCase().includes("search")) ||
+      (el.id && el.id.toLowerCase().includes("search"))
+    );
+    const targetInput = searchInputs[0] || inputs[0];
+    if (targetInput) {
+      const label = targetInput.accessible_name || targetInput.visible_label || "Search field";
+      plannedSteps.push({
+        step_id: stepCounter++,
+        target_ref: targetInput.ref || targetInput.id,
+        field_id: targetInput.id || targetInput.ref,
+        instruction: `Select the ${label} and enter your search terms`,
+        action_type: "input",
+        suggested_value: "Accessible Web Guidance",
+        requires_confirmation: false,
+        is_sensitive: false,
+        needs_large_target: accessibilityMode === "large_target",
+        visible_label: label,
+        alternatives: ["large_target"]
+      });
+
+      const searchBtns = buttons.filter(b => (b.accessible_name || b.visible_label || "").toLowerCase().includes("search"));
+      const btn = searchBtns[0] || buttons[0];
+      if (btn) {
+        const btnLabel = btn.visible_label || btn.accessible_name || "Search";
+        plannedSteps.push({
+          step_id: stepCounter++,
+          target_ref: btn.ref || btn.id,
+          field_id: btn.id || btn.ref,
+          instruction: `Click "${btnLabel}" to view your results`,
+          action_type: "click",
+          suggested_value: null,
+          requires_confirmation: false,
+          is_sensitive: false,
+          needs_large_target: accessibilityMode === "large_target",
+          visible_label: btnLabel,
+          alternatives: ["large_target"]
+        });
+      }
+      return {
+        session_id: `offline_search_${Date.now()}`,
+        status: "ready",
+        planner_source: "offline_fallback",
+        mode,
+        steps: plannedSteps
+      };
+    }
+  }
+
+  if ((isLogin || isSignup) && inputs.length > 0) {
+    inputs.slice(0, 5).forEach(el => {
+      const label = el.visible_label || el.accessible_name || el.placeholder || "Field";
+      const isSensitive = el.is_sensitive || el.input_type === "password";
+      const val = isSensitive ? null : (label.toLowerCase().includes("email") ? "aarav.sharma@nsut.ac.in" : "Aarav Sharma");
+
+      plannedSteps.push({
+        step_id: stepCounter++,
+        target_ref: el.ref || el.id,
+        field_id: el.id || el.ref,
+        instruction: isSensitive
+          ? `Please enter your secure password into this field directly`
+          : `Enter your ${label}`,
+        action_type: "input",
+        suggested_value: val,
+        requires_confirmation: false,
+        is_sensitive: isSensitive,
+        needs_large_target: el.needs_large_target || accessibilityMode === "large_target",
+        visible_label: label,
+        alternatives: ["large_target"]
+      });
     });
-  });
+
+    if (buttons.length > 0) {
+      const btn = buttons[0];
+      const btnLabel = btn.visible_label || btn.accessible_name || "Submit";
+      plannedSteps.push({
+        step_id: stepCounter++,
+        target_ref: btn.ref || btn.id,
+        field_id: btn.id || btn.ref,
+        instruction: `Click "${btnLabel}" to continue`,
+        action_type: "click",
+        suggested_value: null,
+        requires_confirmation: true,
+        is_sensitive: false,
+        needs_large_target: accessibilityMode === "large_target",
+        visible_label: btnLabel,
+        alternatives: ["large_target"]
+      });
+    }
+
+    return {
+      session_id: `offline_auth_${Date.now()}`,
+      status: "ready",
+      planner_source: "offline_fallback",
+      mode,
+      steps: plannedSteps
+    };
+  }
+
+  // Generic form or interactive elements with smart auto-fill values
+  if (inputs.length > 0) {
+    inputs.slice(0, 8).forEach(el => {
+      const label = el.visible_label || el.accessible_name || el.placeholder || el.id || "this field";
+      const labelLower = (label + " " + (el.id || "")).toLowerCase();
+      const isSensitive = el.is_sensitive || el.input_type === "password";
+
+      let suggestedVal = null;
+      if (!isSensitive) {
+        if (el.input_type === "checkbox" || el.input_type === "radio") {
+          suggestedVal = "true";
+        } else if (labelLower.includes("name")) {
+          suggestedVal = "Aarav Sharma";
+        } else if (labelLower.includes("email")) {
+          suggestedVal = "aarav.sharma@nsut.ac.in";
+        } else if (labelLower.includes("phone") || labelLower.includes("mobile")) {
+          suggestedVal = "9876543210";
+        } else if (labelLower.includes("roll") || labelLower.includes("id")) {
+          suggestedVal = "2024CS089";
+        } else if (labelLower.includes("year")) {
+          suggestedVal = "Third year";
+        } else if (labelLower.includes("programme") || labelLower.includes("degree")) {
+          suggestedVal = "B.Tech Computer Science";
+        } else if (labelLower.includes("category")) {
+          suggestedVal = "Academic Excellence";
+        } else if (labelLower.includes("statement")) {
+          suggestedVal = "Passionate about applying software engineering to build assistive web technologies for accessibility. Financial assistance will support my academic tuition and ongoing research projects.";
+        } else if (labelLower.includes("achievement")) {
+          suggestedVal = "Maintained 9.4 CGPA, Dean's List for consecutive semesters, published research paper in IEEE accessible computing interfaces.";
+        } else if (el.tag === "select") {
+          suggestedVal = "Third year";
+        } else {
+          suggestedVal = "Complete application details";
+        }
+      }
+
+      plannedSteps.push({
+        step_id: stepCounter++,
+        target_ref: el.ref || el.id,
+        field_id: el.id || el.ref,
+        instruction: isSensitive
+          ? `Please enter your confidential ${label} directly`
+          : `Fill in ${label}`,
+        action_type: el.tag === "select" ? "select" : (["checkbox", "radio"].includes(el.input_type) ? "click" : "input"),
+        suggested_value: suggestedVal,
+        requires_confirmation: false,
+        is_sensitive: isSensitive,
+        needs_large_target: el.needs_large_target || accessibilityMode === "large_target",
+        visible_label: label,
+        alternatives: ["large_target"]
+      });
+    });
+  }
 
   if (buttons.length > 0) {
-    const btn = buttons[0];
-    const btnLabel = btn.visible_label || btn.accessible_name || btn.id || "Submit";
+    const btn = buttons.find(b => b.input_type === "submit" || (b.accessible_name || "").toLowerCase().includes("submit")) || buttons[0];
+    const btnLabel = btn.visible_label || btn.accessible_name || "Submit";
     plannedSteps.push({
       step_id: stepCounter++,
-      target_ref: btn.id || btn.ref,
+      target_ref: btn.ref || btn.id,
       field_id: btn.id || btn.ref,
-      instruction: `Click "${btnLabel}" to proceed`,
+      instruction: `Review and click "${btnLabel}" to proceed`,
       action_type: "click",
+      suggested_value: null,
       requires_confirmation: true,
+      is_sensitive: false,
+      needs_large_target: accessibilityMode === "large_target",
       visible_label: btnLabel,
       alternatives: ["large_target"]
     });
   }
 
   return {
-    session_id: `demo_${Date.now()}`,
+    session_id: `offline_gen_${Date.now()}`,
     status: "ready",
-    is_offline_fallback: true,
+    planner_source: "offline_fallback",
+    mode,
     steps: plannedSteps
   };
+}
+
+async function blobToDataUrl(blob) {
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return `data:audio/mpeg;base64,${btoa(binary)}`;
 }
 
 // Runtime Message Router
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const senderTabId = sender?.tab?.id || activeSessionState.tabId;
 
+  // 1. Plan Request: Fast API call with instant fallback
   if (message.type === "PLAN_REQUEST") {
     apiFetch(`/plan`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(message.payload)
     })
       .then(async response => {
@@ -178,13 +302,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           currentStepIndex: 0,
           totalSteps: data.steps?.length || 0,
           intent: message.payload?.intent || "",
+          mode: message.payload?.mode || "guide",
           tabId: senderTabId
         });
         sendResponse({ ok: true, data });
       })
       .catch(error => {
-        console.warn("[Ghost Hands SW] Backend offline, using local planner for fields:", error.message);
-        const fallback = generateFallbackPlan(message.payload);
+        console.info("[Ghost Hands SW] Using fast local universal planner:", error.message);
+        const fallback = generateUniversalFallbackPlan(message.payload);
         updateActiveSession({
           active: true,
           sessionId: fallback.session_id,
@@ -192,14 +317,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           currentStepIndex: 0,
           totalSteps: fallback.steps.length,
           intent: message.payload?.intent || "",
+          mode: message.payload?.mode || "guide",
           tabId: senderTabId
         });
-        sendResponse({ ok: true, data: fallback, note: "Local fallback plan used (Backend offline)" });
+        sendResponse({ ok: true, data: fallback });
       });
 
     return true;
   }
 
+  // 2. Speak Text: proxies via FastAPI /speak with immediate browser TTS fallback
+  if (message.type === "SPEAK_TEXT") {
+    const text = message.text || "";
+    if (!text.trim() || !activeSessionState.isVoiceEnabled) {
+      sendResponse({ ok: false, reason: "muted_or_empty" });
+      return true;
+    }
+
+    apiFetch(`/speak`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    })
+      .then(async response => {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("audio")) {
+          const blob = await response.blob();
+          const audioDataUrl = await blobToDataUrl(blob);
+          sendResponse({ ok: true, audioDataUrl, source: "fish-audio" });
+        } else {
+          sendResponse({ ok: false, fallback: "browser_tts", text });
+        }
+      })
+      .catch(() => {
+        sendResponse({ ok: false, fallback: "browser_tts", text });
+      });
+
+    return true;
+  }
+
+  // 3. Confirm Action
   if (message.type === "CONFIRM_ACTION") {
     apiFetch(`/sessions/${message.sessionId}/confirm`, {
       method: "POST",
@@ -220,6 +377,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // 4. Step Completed
   if (message.type === "STEP_COMPLETED") {
     if (activeSessionState.sessionId === message.sessionId) {
       activeSessionState.currentStepIndex++;
@@ -239,6 +397,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // 5. Stop Guidance
   if (message.type === "STOP_SESSION" || message.type === "STOP_GUIDANCE") {
     const sessId = message.sessionId || activeSessionState.sessionId;
     if (sessId) {
@@ -260,6 +419,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // 6. Voice Toggle
+  if (message.type === "TOGGLE_VOICE") {
+    const isEnabled = message.enabled !== undefined ? message.enabled : !activeSessionState.isVoiceEnabled;
+    updateActiveSession({ isVoiceEnabled: isEnabled });
+    sendResponse({ ok: true, isVoiceEnabled: isEnabled });
+    return true;
+  }
+
+  // 7. Autonomy Mode Change
+  if (message.type === "SET_AUTONOMY_MODE") {
+    const mode = message.mode || "guide";
+    updateActiveSession({ mode });
+    sendResponse({ ok: true, mode });
+    return true;
+  }
+
+  // 8. Open Side Panel
   if (message.type === "OPEN_SIDEPANEL") {
     if (chrome.sidePanel && chrome.sidePanel.open) {
       const windowId = sender.tab?.windowId;
@@ -272,15 +448,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
     }
-    sendResponse({ ok: false, error: "Side panel API not accessible in this context" });
+    sendResponse({ ok: false, error: "Side panel API not accessible" });
     return true;
   }
 
+  // 9. Session State Query
   if (message.type === "GET_SESSION_STATE") {
     sendResponse({ ok: true, state: activeSessionState });
     return true;
   }
 
+  // 10. Session State Broadcast
   if (message.type === "SESSION_STATE_CHANGED") {
     if (message.state) {
       updateActiveSession(message.state);

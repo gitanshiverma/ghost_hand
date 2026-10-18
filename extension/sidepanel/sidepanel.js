@@ -1,9 +1,5 @@
 /**
- * Ghost Hands - Side Panel Controller
- * Integrates open-source patterns:
- *  - Browser-Use DOM tree representation
- *  - Stagehand step state tracking
- *  - axe-core accessibility score rendering
+ * Ghost Hands - Universal Side Panel Controller
  */
 
 const statusBadge = document.getElementById("sp-status");
@@ -18,19 +14,101 @@ const prevBtn = document.getElementById("sp-prev-btn");
 const nextBtn = document.getElementById("sp-next-btn");
 const stopBtn = document.getElementById("sp-stop-btn");
 const largeTargetToggle = document.getElementById("sp-large-target-toggle");
+const voiceToggle = document.getElementById("sp-voice-toggle");
 const inspectBtn = document.getElementById("sp-inspect-btn");
 const inspector = document.getElementById("sp-inspector");
 const a11yScoreEl = document.getElementById("sp-a11y-score");
+const modeBtns = document.querySelectorAll(".mode-btn");
+const quickChips = document.querySelectorAll(".chip");
+
+const spMicBtn = document.getElementById("sp-mic-btn");
+const spMicLabel = document.getElementById("sp-mic-label");
+const spMicStatus = document.getElementById("sp-mic-status");
+const spMicStatusText = document.getElementById("sp-mic-status-text");
+const spModeDesc = document.getElementById("sp-mode-desc");
 
 let activeTabId = null;
 let currentSessionState = null;
+let selectedMode = "guide";
+let spRecognition = null;
+let spIsRecording = false;
+
+function updateStartBtnText() {
+  if (selectedMode === "automate") {
+    startBtn.innerHTML = "<span>⚡ Start Auto-Filling</span>";
+    if (spModeDesc) {
+      spModeDesc.textContent = "Agentic AI Auto-Fill: asks what details you want to fill (via Voice or Text) and completes form steps comfortably.";
+    }
+  } else {
+    startBtn.innerHTML = "<span>🧭 Start Guided Steps</span>";
+    if (spModeDesc) {
+      spModeDesc.textContent = "Guided steps + intelligent Cursor Assistant that explains whatever you point at.";
+    }
+  }
+}
+
+function isRestrictedUrl(url) {
+  if (!url) return true;
+  return url.startsWith("chrome://") ||
+         url.startsWith("chrome-extension://") ||
+         url.startsWith("edge://") ||
+         url.startsWith("about:") ||
+         url.startsWith("chrome-devtools://") ||
+         url.startsWith("view-source:");
+}
+
+// Voice Recognition (Delegated to Webpage Context for full MV3 browser speech support)
+if (spMicBtn) {
+  spMicBtn.addEventListener("click", async () => {
+    const tab = await getActiveTab();
+    if (!tab?.id || isRestrictedUrl(tab.url)) {
+      alert("Chrome blocks extensions on system pages (like chrome://extensions). Please switch to a web tab (such as https://www.amazon.in or http://localhost:8000/form) to use Ghost Hands.");
+      return;
+    }
+    await ensureContentScript(tab.id, tab.url);
+    chrome.tabs.sendMessage(tab.id, {
+      type: "START_PAGE_VOICE_CAPTURE",
+      mode: selectedMode
+    }).catch(() => {});
+  });
+}
+
+// Listen for voice updates from webpage overlay
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "VOICE_INTENT_CAPTURED" && message.text) {
+    if (intentInput) {
+      intentInput.value = message.text;
+    }
+  }
+});
+
+// Mode selection
+modeBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    modeBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedMode = btn.getAttribute("data-mode");
+    updateStartBtnText();
+    chrome.storage.local?.set({ selectedMode });
+    chrome.runtime.sendMessage({ type: "SET_AUTONOMY_MODE", mode: selectedMode });
+  });
+});
+
+// Quick chips
+quickChips.forEach(chip => {
+  chip.addEventListener("click", () => {
+    intentInput.value = chip.getAttribute("data-intent");
+    intentInput.focus();
+  });
+});
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
 }
 
-async function ensureContentScript(tabId) {
+async function ensureContentScript(tabId, url = "") {
+  if (isRestrictedUrl(url)) return false;
   try {
     const res = await chrome.tabs.sendMessage(tabId, { type: "PING" });
     if (res?.ok) return true;
@@ -40,6 +118,9 @@ async function ensureContentScript(tabId) {
         target: { tabId },
         files: ["content/overlay.css"]
       });
+    } catch (cssErr) {}
+
+    try {
       await chrome.scripting.executeScript({
         target: { tabId },
         files: [
@@ -48,9 +129,10 @@ async function ensureContentScript(tabId) {
           "content/content-script.js"
         ]
       });
+      await new Promise(r => setTimeout(r, 80));
       return true;
     } catch (err) {
-      console.warn("Sidepanel auto-inject failed:", err);
+      console.warn("Script injection fallback error:", err);
       return false;
     }
   }
@@ -58,6 +140,7 @@ async function ensureContentScript(tabId) {
 }
 
 async function init() {
+  updateStartBtnText();
   const tab = await getActiveTab();
   if (tab?.id) {
     activeTabId = tab.id;
@@ -65,9 +148,19 @@ async function init() {
     loadAccessibilityScore(tab.id);
   }
 
-  chrome.storage.local?.get(["isLargeTargetMode"], res => {
+  chrome.storage.local?.get(["isLargeTargetMode", "isVoiceEnabled", "selectedMode"], res => {
     if (res && res.isLargeTargetMode !== undefined) {
       largeTargetToggle.checked = res.isLargeTargetMode;
+    }
+    if (res && res.isVoiceEnabled !== undefined) {
+      voiceToggle.checked = res.isVoiceEnabled;
+    }
+    if (res && res.selectedMode) {
+      selectedMode = res.selectedMode;
+      modeBtns.forEach(b => {
+        b.classList.toggle("active", b.getAttribute("data-mode") === selectedMode);
+      });
+      updateStartBtnText();
     }
   });
 }
@@ -109,6 +202,13 @@ async function refreshState() {
 function renderState(state) {
   if (!state) return;
   currentSessionState = state;
+
+  if (state.mode) {
+    selectedMode = state.mode;
+    modeBtns.forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-mode") === selectedMode);
+    });
+  }
 
   if (state.active && state.plan && state.plan.length > 0) {
     statusBadge.textContent = "Guiding";
@@ -154,20 +254,23 @@ function renderState(state) {
       if (step.needs_large_target) {
         const a11yBadge = document.createElement("span");
         a11yBadge.className = "step-badge a11y";
-        a11yBadge.textContent = "🎯 <44px";
+        a11yBadge.textContent = "🎯 Small";
         title.appendChild(a11yBadge);
       }
 
-      const targetText = document.createElement("div");
-      targetText.className = "step-target";
-      targetText.textContent = `Target: ${step.visible_label || step.accessible_name || step.target_ref || "Page element"}`;
-
       content.appendChild(title);
-      content.appendChild(targetText);
+
+      if (step.visible_label || step.accessible_name) {
+        const targetHint = document.createElement("div");
+        targetHint.className = "step-target";
+        targetHint.textContent = `Target: ${step.visible_label || step.accessible_name}`;
+        content.appendChild(targetHint);
+      }
+
       item.appendChild(icon);
       item.appendChild(content);
 
-      item.addEventListener("click", () => {
+      item.addEventListener("click", async () => {
         if (activeTabId) {
           chrome.tabs.sendMessage(activeTabId, {
             type: "SHOW_STEP",
@@ -179,98 +282,117 @@ function renderState(state) {
       stepList.appendChild(item);
     });
 
-    prevBtn.disabled = currIdx <= 0;
-    nextBtn.textContent = currIdx >= total - 1 ? "Finish ✓" : "Next / Skip →";
+    prevBtn.disabled = currIdx === 0;
+    const currentStep = state.plan[currIdx];
+    if (currentStep && currentStep.requires_confirmation) {
+      nextBtn.textContent = "Confirm Action ✓";
+      nextBtn.style.background = "#16a34a";
+    } else {
+      nextBtn.textContent = currIdx >= total - 1 ? "Finish ✓" : "Next / Skip →";
+      nextBtn.style.background = "#2563eb";
+    }
   } else {
     statusBadge.textContent = "Ready";
     statusBadge.classList.remove("active");
     intentCard.style.display = "block";
     guidanceCard.style.display = "none";
-    progressFill.style.width = "0%";
-  }
-
-  if (state.isLargeTargetMode !== undefined) {
-    largeTargetToggle.checked = state.isLargeTargetMode;
+    startBtn.disabled = false;
+    updateStartBtnText();
   }
 }
 
-// Event Listeners
 startBtn.addEventListener("click", async () => {
   const tab = await getActiveTab();
-  if (!tab?.id) return;
+  if (!tab?.id || isRestrictedUrl(tab.url)) {
+    alert("Cannot start guidance on browser system pages (like chrome://extensions). Please switch to a website like http://localhost:8000/form or https://www.amazon.in.");
+    return;
+  }
   activeTabId = tab.id;
 
   const intent = intentInput.value.trim() || "Guide me through this webpage";
-  startBtn.textContent = "⏳ Analyzing Page...";
+
   startBtn.disabled = true;
+  startBtn.innerHTML = "<span>⏳ Analyzing Page...</span>";
 
   try {
-    await ensureContentScript(tab.id);
-    await chrome.tabs.sendMessage(tab.id, {
-      type: "START_GUIDANCE",
-      intent
-    });
+    await ensureContentScript(tab.id, tab.url);
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        type: "START_GUIDANCE",
+        intent,
+        mode: selectedMode
+      });
+    } catch (msgErr) {
+      await new Promise(r => setTimeout(r, 120));
+      await chrome.tabs.sendMessage(tab.id, {
+        type: "START_GUIDANCE",
+        intent,
+        mode: selectedMode
+      });
+    }
   } catch (err) {
-    alert("Could not start guidance on this page. Please refresh the page and try again.");
-  } finally {
+    console.warn("Sidepanel start guidance error:", err);
     startBtn.disabled = false;
-    startBtn.textContent = "🖐️ Start Guided Steps";
+    updateStartBtnText();
   }
 });
 
+// Previous Step
 prevBtn.addEventListener("click", async () => {
-  const tab = await getActiveTab();
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, { type: "PREV_STEP" });
+  if (activeTabId) {
+    chrome.tabs.sendMessage(activeTabId, { type: "PREV_STEP" });
   }
 });
 
+// Next Step / Confirm
 nextBtn.addEventListener("click", async () => {
-  const tab = await getActiveTab();
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, { type: "NEXT_STEP" });
+  if (activeTabId) {
+    chrome.tabs.sendMessage(activeTabId, { type: "NEXT_STEP" });
   }
 });
 
+// Emergency Stop
 stopBtn.addEventListener("click", async () => {
-  const tab = await getActiveTab();
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, { type: "STOP" });
+  if (activeTabId) {
+    chrome.tabs.sendMessage(activeTabId, { type: "STOP" });
   }
   chrome.runtime.sendMessage({ type: "STOP_SESSION" });
-  renderState({ active: false });
 });
 
+// Large Target Toggle
 largeTargetToggle.addEventListener("change", async () => {
   const enabled = largeTargetToggle.checked;
   chrome.storage.local?.set({ isLargeTargetMode: enabled });
 
-  const tab = await getActiveTab();
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, {
+  if (activeTabId) {
+    chrome.tabs.sendMessage(activeTabId, {
       type: "TOGGLE_LARGE_TARGET",
       enabled
-    });
+    }).catch(() => {});
   }
 });
 
+// Voice Toggle
+voiceToggle.addEventListener("change", async () => {
+  const enabled = voiceToggle.checked;
+  chrome.storage.local?.set({ isVoiceEnabled: enabled });
+  chrome.runtime.sendMessage({ type: "TOGGLE_VOICE", enabled });
+
+  if (activeTabId) {
+    chrome.tabs.sendMessage(activeTabId, {
+      type: "TOGGLE_VOICE",
+      enabled
+    }).catch(() => {});
+  }
+});
+
+// Inspect DOM
 inspectBtn.addEventListener("click", async () => {
-  if (inspector.classList.contains("visible")) {
-    inspector.classList.remove("visible");
-    inspectBtn.textContent = "Inspect DOM";
-    return;
-  }
-
   const tab = await getActiveTab();
-  if (!tab?.id) {
-    inspector.textContent = "No active tab detected.";
-    inspector.classList.add("visible");
-    return;
-  }
+  if (!tab?.id) return;
 
-  inspector.textContent = "Extracting Browser-Use sanitized DOM map with axe-core signals...";
+  inspector.textContent = "Analyzing DOM interactive elements...";
   inspector.classList.add("visible");
-  inspectBtn.textContent = "Hide DOM";
 
   try {
     await ensureContentScript(tab.id);
@@ -278,17 +400,25 @@ inspectBtn.addEventListener("click", async () => {
     if (res?.snapshot) {
       inspector.textContent = JSON.stringify(res.snapshot, null, 2);
     } else {
-      inspector.textContent = "No elements returned in snapshot.";
+      inspector.textContent = "Failed to capture page elements.";
     }
-  } catch (e) {
-    inspector.textContent = "Error extracting DOM map: " + String(e);
+  } catch (err) {
+    inspector.textContent = `Error: ${err.message}`;
   }
 });
 
-chrome.runtime.onMessage.addListener(msg => {
-  if (msg.type === "SESSION_STATE_CHANGED" && msg.state) {
-    renderState(msg.state);
+// State listener
+chrome.runtime.onMessage.addListener(message => {
+  if (message.type === "SESSION_STATE_CHANGED" && message.state) {
+    renderState(message.state);
   }
 });
 
-document.addEventListener("DOMContentLoaded", init);
+// Tab change tracking
+chrome.tabs.onActivated.addListener(activeInfo => {
+  activeTabId = activeInfo.tabId;
+  refreshState();
+  loadAccessibilityScore(activeInfo.tabId);
+});
+
+init();

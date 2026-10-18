@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Ghost Hands",
-  "version": "0.1.0",
-  "description": "Human-in-the-loop accessible web guidance",
+  "version": "2.0.0",
+  "description": "Universal AI-assisted accessible web guidance for any website",
   "permissions": [
     "activeTab",
     "scripting",
